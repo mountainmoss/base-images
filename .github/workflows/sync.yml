@@ -27,12 +27,14 @@ jobs:
     steps:
       - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.3
         if: github.ref_name == 'main'
-      - name: dry run copy to ghcr.io
+      - name: prepare
         env:
           GH_TOKEN: ${{ secrets.GH_CI_USER_TOKEN }}
         run: |
           echo -n ${GH_TOKEN} | podman login -u mountainmossbot --password-stdin ghcr.io --verbose
           podman secret create github-auth "/run/user/1001/containers/auth.json"
+      - name: dry run copy to ghcr.io
+        run: |
           podman run --volume "${PWD}:/src" --workdir /src ghcr.io/geonet/base-images/stable:v1.16 sync --dry-run --all --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
       - name: copy to ghcr.io
         run: |
