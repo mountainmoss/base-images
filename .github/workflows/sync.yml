@@ -33,8 +33,8 @@ jobs:
         run: |
           echo -n ${GH_TOKEN} | podman login -u mountainmossbot --password-stdin ghcr.io --verbose
           podman secret create github-auth "/run/user/1001/containers/auth.json"
-          podman run --secret=github-auth --volume "${PWD}:/src" --workdir /src ghcr.io/geonet/base-images/stable:v1.16 sync --authfile=/run/secrets/registry_name_auth --dry-run --all --src yaml --dest docker /src/sync-ghcr.yml ghcr.io/geonet/base-images
+          podman run --secret=github-auth --volume "${PWD}:/src" --workdir /src ghcr.io/geonet/base-images/stable:v1.16 sync --authfile=/run/secrets/registry_name_auth --dry-run --all --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
       - name: copy to ghcr.io
         run: |
-          podman run --secret=github-auth --volume "${PWD}:/src" --workdir /src ghcr.io/geonet/base-images/stable:v1.16 sync --authfile=/run/secrets/registry_name_auth --all --keep-going --src yaml --dest docker /src/sync-ghcr.yml ghcr.io/geonet/base-images
+          podman run --secret=github-auth --volume "${PWD}:/src" --workdir /src ghcr.io/geonet/base-images/stable:v1.16 sync --authfile=/run/secrets/registry_name_auth --all --keep-going --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
         if: github.ref_name == 'main'
