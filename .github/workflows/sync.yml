@@ -26,32 +26,25 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.3
-      - uses: GeoNet/setup-crane@00c9e93efa4e1138c9a7a5c594acd6c75a2fbf0c # main
-      - uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4 # v3.4.0
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v2.0.0
-        with:
-          aws-region: ap-southeast-2
-          role-to-assume: arn:aws:iam::862640294325:role/github-actions-geonet-ecr-push
-          role-duration-seconds: 3600
-          role-session-name: github-actions-GeoNet--base-images
-        if: github.ref_name == 'main'
-      - name: login to ECR
+      - name: prepare auth podman
         run: |
-          aws ecr get-login-password --region ap-southeast-2 | skopeo login "$ECR" -u AWS --password-stdin
-        if: github.ref_name == 'main'
+          auth_tmp=$(mktemp)
+          echo '{}' > $auth_tmp  # JSON formating is required
+          podman login --authfile=$auth_tmp ghcr.io
+          podman secret create github-auth $auth_tmp
+          rm $auth_tmp
       - name: dry run copy to ghcr.io
         env:
           GH_TOKEN: ${{ secrets.GH_CI_USER_TOKEN }}
         run: |
-          podman run --env-host -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --dry-run --all --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
+          podman run --secret=github-auth -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --dest-authfile /run/secrets/github-auth --dry-run --all --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
       - name: copy to ghcr.io
         env:
           GH_TOKEN: ${{ secrets.GH_CI_USER_TOKEN }}
         run: |
-          podman run --env-host -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --all --keep-going --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
+          podman run --secret=github-auth -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --dest-authfile /run/secrets/github-auth --all --keep-going --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
         if: github.ref_name == 'main'
       - name: copy to ecr
         run: |
-          podman run --env-host -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --all --src yaml --dest docker sync-ecr.yml 862640294325.dkr.ecr.ap-southeast-2.amazonaws.com
+          podman run --secret=github-auth -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --dest-authfile /run/secrets/github-auth --all --src yaml --dest docker sync-ecr.yml 862640294325.dkr.ecr.ap-southeast-2.amazonaws.com
         if: github.ref_name == 'main'
