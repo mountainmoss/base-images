@@ -27,20 +27,18 @@ jobs:
     steps:
       - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.3
       - name: prepare auth podman
+        env:
+          GH_TOKEN: ${{ secrets.GH_CI_USER_TOKEN }}
         run: |
           auth_tmp=$(mktemp)
           echo '{}' > $auth_tmp  # JSON formating is required
-          podman login --authfile=$auth_tmp ghcr.io
+          echo -n $GH_TOKEN | podman login --authfile=$auth_tmp -u mountainmossbot --password-stdin ghcr.io
           podman secret create github-auth $auth_tmp
           rm $auth_tmp
       - name: dry run copy to ghcr.io
-        env:
-          GH_TOKEN: ${{ secrets.GH_CI_USER_TOKEN }}
         run: |
           podman run --secret=github-auth -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --dest-authfile /run/secrets/github-auth --dry-run --all --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
       - name: copy to ghcr.io
-        env:
-          GH_TOKEN: ${{ secrets.GH_CI_USER_TOKEN }}
         run: |
           podman run --secret=github-auth -v "${PWD}:/src" -w /src ghcr.io/geonet/base-images/stable:v1.16 sync --dest-authfile /run/secrets/github-auth --all --keep-going --src yaml --dest docker sync-ghcr.yml ghcr.io/geonet/base-images
         if: github.ref_name == 'main'
